@@ -1,81 +1,109 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
-icon: 'rocket'
+title: "Get started with Maieutic"
+description: "Run Maieutic locally in under five minutes. You need Node 20+ and an Anthropic API key. Optional demo data loads three students with pre-built cohort sessions."
 ---
 
-## Get started in three steps
+Maieutic runs entirely on your machine. There is no hosted instance — you clone the repo, set two environment variables, apply the database migrations, and start the dev server. The steps below walk through every command in order.
 
-Get your documentation site running locally and make your first customization.
+## Prerequisites
 
-### Step 1: Set up your local environment
+- **Node.js 20 or later** — check with `node --version`
+- **An Anthropic API key** — get one at [console.anthropic.com](https://console.anthropic.com)
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+## Setup
 
-### Step 2: Deploy your changes
+<Steps>
+  <Step title="Install dependencies">
+    Clone the repository and install packages:
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+    ```bash
+    npm install
+    ```
+  </Step>
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+  <Step title="Configure environment variables">
+    Copy the example env file and fill in your key:
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+    ```bash
+    cp .env.example .env.local
+    ```
 
-### Step 3: Go live
+    Open `.env.local` and set both variables:
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+    ```bash
+    ANTHROPIC_API_KEY=sk-ant-...
+    DATABASE_URL="file:./dev.db"
+    ```
 
-## Next steps
+    See [Environment configuration](/configuration) for details on each variable.
+  </Step>
 
-Now that you have your docs running, explore these key features:
+  <Step title="Apply database migrations">
+    Initialize the SQLite database and generate the Prisma client:
 
-<CardGroup cols={2}>
+    ```bash
+    npx prisma migrate dev
+    ```
+  </Step>
 
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
+  <Step title="Seed demo data (optional)">
+    Load three demo students — Ana, Beto, and Carmen — along with pre-built cohort sessions so you can explore the instructor dashboard without running exercises yourself:
 
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
+    ```bash
+    npm run reset-demo
+    ```
 
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
+    This wipes the database and replays captured fixtures with rebased timestamps so the live dashboard looks active. Ana and Beto have completed sessions; Carmen's session is still in progress.
 
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
+    <Tip>
+      Skip this step if you want to start with a blank database and create your own exercises and sessions from scratch.
+    </Tip>
+  </Step>
 
-</CardGroup>
+  <Step title="Start the dev server">
+    ```bash
+    npm run dev
+    ```
+  </Step>
 
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>
+  <Step title="Open the app">
+    Navigate to [http://localhost:3000](http://localhost:3000).
+
+    The landing page asks whether you are a student or a teacher — no login required. Select your role to proceed:
+
+    - **Students** are routed to `/exercises` — an exercise list grouped by unit.
+    - **Instructors** are routed to `/live` — the live class dashboard showing active student sessions.
+  </Step>
+</Steps>
+
+## Quick reference
+
+All commands in one place:
+
+<CodeGroup>
+
+```bash Full setup
+npm install
+cp .env.example .env.local
+# Edit .env.local: set ANTHROPIC_API_KEY and DATABASE_URL
+npx prisma migrate dev
+npm run reset-demo   # optional
+npm run dev
+```
+
+```bash Without demo data
+npm install
+cp .env.example .env.local
+# Edit .env.local: set ANTHROPIC_API_KEY and DATABASE_URL
+npx prisma migrate dev
+npm run dev
+```
+
+</CodeGroup>
+
+## Where to go next
+
+Once the server is running, your starting point depends on your role:
+
+- **Students** — head to `/exercises` to see available exercises grouped by unit, pick one, and begin phase 1 (specification).
+- **Instructors** — head to `/live` for the real-time dashboard, or to the exercise library to author new problems.

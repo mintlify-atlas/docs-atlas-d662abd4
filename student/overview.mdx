@@ -1,0 +1,59 @@
+---
+title: "Student experience in Maieutic"
+description: "A three-phase learning loop: write a specification, implement it in code, then explain where the two diverge — all guided by Claude Opus."
+---
+
+Maieutic asks you to do something unusual before you write any code: describe what the program should do in plain language. No login is required. You land on an exercise list, pick a problem, and work through three phases in order. Opus — Claude Opus, running inside the IDE — interrogates your thinking at each transition so that by the time you submit, you have a written record of your intent, your code, and your own explanation of where they differ.
+
+## The three phases
+
+<Steps>
+  <Step title="Phase 1: Write your specification">
+    Describe what the program should do before opening the editor. Opus reads your description against a set of dimensions your instructor configured and asks questions about anything left unaddressed. The editor stays locked until your spec answers all of them.
+  </Step>
+  <Step title="Phase 2: Write the code">
+    The Monaco editor opens with your approved spec visible alongside it. Autocomplete is disabled — you type every character deliberately. A chat panel gives you access to Opus while you work: it answers reference questions directly and returns counter-questions when you ask about your own reasoning.
+  </Step>
+  <Step title="Phase 3: Explain your divergences">
+    When you submit, Opus compares your final spec against your final code and surfaces every meaningful place they don't line up — as a neutral question, not an accusation. You answer each question in your own words. After you finish, you can optionally revise the code.
+  </Step>
+</Steps>
+
+## How exercises are organised
+
+Exercises are grouped by **unit** and targeted at a **student level**.
+
+| Unit | Python tools in scope |
+|------|----------------------|
+| `unit_1` | Variables, `input()`/`print()`, arithmetic, strings, booleans, `try`/`except` |
+| `unit_2` | Unit 1 plus `if`/`elif`/`else`, `while`, `for`, nested control flow |
+| `unit_3` | Unit 2 plus lists and dictionaries |
+| `unit_4` | Everything, including user-defined functions |
+
+Each exercise also carries a student level (`week_1_2`, `week_3_6`, or `week_7_plus`) that shapes how Opus phrases its questions — simpler and more concrete in the early weeks, more technical later.
+
+## Session resumption
+
+Maieutic remembers exactly where you left off. If you close the browser and return later, you land on your in-progress session — your spec draft, your code, and any chat history are all preserved.
+
+<Note>
+  The "Start fresh" option only appears after you have fully completed all three phases. You cannot abandon an in-progress session mid-exercise; finishing it is the only path to a clean slate.
+</Note>
+
+## Language
+
+A language toggle on the landing page lets you switch between English and Spanish. Opus's questions and the exercise titles are translated automatically — your own spec text and code are always preserved as you wrote them.
+
+## Explore each phase
+
+<Columns cols={2}>
+  <Card title="Phase 1: Specification" icon="file-pen" href="/student/phase-1-specification">
+    How Opus interrogates your spec and what it takes to pass the spec gate.
+  </Card>
+  <Card title="Phase 2: Coding" icon="code" href="/student/phase-2-coding">
+    The Monaco editor, the chat panel, and how to propose a spec amendment mid-coding.
+  </Card>
+  <Card title="Phase 3: Review" icon="magnifying-glass" href="/student/phase-3-review">
+    How divergences are generated, what each category means, and the final revision pass.
+  </Card>
+</Columns>

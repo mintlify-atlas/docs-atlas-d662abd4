@@ -1,0 +1,86 @@
+---
+title: "Reviewing a student's session reasoning"
+description: "The reasoning view at /reasoning/[sid] shows a two-column layout: what the student wrote on the left, Opus's private alignment analysis on the right."
+---
+
+The session reasoning view at `/reasoning/[sid]` gives instructors a complete record of one student's session, structured as a two-column layout. The left column shows everything the student saw and wrote. The right column shows what the system understood privately — Opus's predictions, alignment classifications, and the live summary history. The view is accessible from the live dashboard by clicking any session row, and is most useful after a session completes for giving a specific student targeted, evidence-based feedback.
+
+## Left column — what the student saw
+
+<AccordionGroup>
+  <Accordion title="Specification iterations">
+    Every round of the spec-gate phase is shown in order, each with:
+
+    - The student's specification text exactly as submitted.
+    - The questions Opus asked in response.
+    - Which spec-gate dimensions were addressed in that round (shown in the right column).
+    - Whether the iteration passed the gate.
+
+    This makes it easy to see how quickly the student narrowed in on the required commitments — or where they kept restating the same spec without making progress.
+  </Accordion>
+
+  <Accordion title="Chat exchanges (Phase 2)">
+    If the student asked Opus questions during the coding phase, the full exchange log is shown: each student message followed by Opus's response, labelled with the mode Opus chose — `interrogative` (a counter-question, because the student was reasoning about their own logic) or `direct` (a factual answer, because the student asked a syntax question).
+  </Accordion>
+
+  <Accordion title="Final code and divergence questions">
+    The code the student submitted at the end of Phase 2 is shown verbatim. Below it, each divergence question Opus posed during Phase 3 is shown as the student saw it — the `studentFacingQuestion` field — followed by the student's answer.
+
+    If the student chose to revise their code after answering all divergence questions, the revised code appears with a note that the divergence classifications above refer to the original submission.
+  </Accordion>
+</AccordionGroup>
+
+## Right column — what Opus was thinking
+
+This column is never visible to students. It contains Opus's private analysis of the same session.
+
+<AccordionGroup>
+  <Accordion title="Spec-gate reasoning per round">
+    For each specification iteration, the right column shows which dimensions Opus marked as addressed in that round, which it still considered open, and any emergent gaps — questions Opus generated on its own that were not in the original instructor-configured dimensions.
+  </Accordion>
+
+  <Accordion title="Divergence classifications">
+    For each divergence identified at the end of Phase 2, the right column shows:
+
+    - **Predicted justification** — what Opus expected the student to say when asked about the divergence. This is generated privately before the student answers and is not shown to them.
+    - **Alignment** — how the student's actual answer compared to the prediction, classified as `aligned`, `partial`, or `diverged`.
+    - **Final classification reason** — Opus's post-hoc explanation of why it assigned that alignment.
+    - **Evidence** — the specific text from the spec and the specific code fragment that Opus used to identify the divergence in the first place.
+  </Accordion>
+
+  <Accordion title="Live summary history">
+    All live summaries generated during the session are shown in reverse-chronological order, each with its timestamp and any flags that were active at the time. This lets you see how the instructor-facing picture of the student's progress evolved.
+  </Accordion>
+</AccordionGroup>
+
+## What alignment means
+
+Alignment is the core pedagogical signal the reasoning view exposes. It answers the question: can this student explain their own code?
+
+| Classification | Meaning |
+|----------------|---------|
+| `aligned` | The student's explanation matches Opus's prediction — evidence of genuine understanding of where the code diverged from the spec and why. |
+| `partial` | Partial match — the student understood some of the divergence but missed something. |
+| `diverged` | The student's explanation does not match the prediction — the understanding gap is real and may be worth following up directly. |
+
+An `alignment_failure` event is recorded in the session event log whenever a response is classified `diverged`, and the flag appears on the live dashboard row in real time.
+
+## Session event log
+
+Every session has a complete event log visible at the bottom of the right column. Events are recorded in order with timestamps:
+
+| Event kind | When it fires |
+|------------|--------------|
+| `session_started` | Student opens the exercise |
+| `phase_transition` | Student moves from one phase to the next |
+| `alignment_failure` | A divergence response is classified `diverged` |
+| `help_request` | Student raises the help flag |
+| `help_resolved` | Instructor resolves the help request |
+| `revision` | Student invokes "change of plan" during Phase 2 |
+| `summary_refresh` | Opus regenerates the live summary |
+
+The event log is useful for reconstructing the chronology of a session — for example, noticing that a student raised a help request immediately after an alignment failure, or that all their revisions happened in the first five minutes of Phase 2.
+
+<Note>
+  The reasoning view is read-only. It is there to give the instructor evidence to act on — in conversation with the student, or when deciding whether to revise an exercise — not to provide automated feedback. The alignment signal is a signal, not a grade.
+</Note>

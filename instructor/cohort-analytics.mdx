@@ -1,0 +1,80 @@
+---
+title: "Cohort analytics and exercise insights"
+description: "The /cohort/[id] view shows an Opus narrative of how the class engaged with an exercise: drifts, solution techniques, strengths, and a provisional flag."
+---
+
+After a class has worked through an exercise, the cohort view at `/cohort/[id]` shows a short Opus-generated narrative of how the cohort engaged with it. The narrative is grounded in aggregate session data — which spec-gate dimensions most students missed on their first submission, how divergences distributed across the drift/revision/bug categories, where alignment failures clustered — and it aims to give you a concrete picture of the exercise's pedagogical effect, not just counts.
+
+## The cohort narrative
+
+Opus generates the narrative from the `CohortNarrativeOutput` schema:
+
+```typescript
+// src/lib/opus/schemas.ts
+const CohortNarrativeOutput = z.object({
+  narrative: z.string(),            // 2-3 sentence overview
+  solution_techniques: z.array(z.string()),
+  common_drifts: z.array(z.string()),
+  strengths: z.array(z.string()),
+  difficulties: z.array(z.string()),
+  provisional: z.boolean(),         // true if fewer than ~3 completed sessions
+});
+```
+
+Each field is described below.
+
+<AccordionGroup>
+  <Accordion title="Narrative">
+    A two-to-three sentence paragraph summarising how the cohort engaged with the exercise overall. The register is concrete and data-grounded — for example: *"Six of eight students missed case-sensitivity on their first spec; consider introducing it as an explicit dimension earlier in the unit."* Opus is instructed not to produce generalities like "students found this challenging."
+
+    If the sample is small (fewer than approximately three completed sessions) the narrative opens with an explicit acknowledgement — "Only N sessions completed so far; patterns below are provisional" — and the `provisional` field is set to `true`.
+  </Accordion>
+
+  <Accordion title="Solution techniques">
+    A list of the approaches students commonly used to implement the exercise. Examples: *"Most students used a straightforward for-loop accumulator"*, *"A minority refactored to a sum() comprehension mid-writing."*
+
+    This list can be empty if the aggregate data does not show a clear pattern.
+  </Accordion>
+
+  <Accordion title="Common drifts and errors">
+    Recurring divergences from the exercise's expected patterns — the gaps students most often left implicit in their specs, the bugs that appeared more than once, the edge cases most people skipped. Each item is grounded in the divergence and alignment data from completed sessions.
+  </Accordion>
+
+  <Accordion title="Strengths">
+    What the cohort did well on this exercise — for example, iterating to a clean spec quickly, or correctly identifying a refactor opportunity. This list can be empty if the data shows nothing notable.
+  </Accordion>
+
+  <Accordion title="Difficulties">
+    Where the cohort struggled. This is the list most useful for deciding what to address next class or how to adjust the exercise for the next cohort.
+  </Accordion>
+</AccordionGroup>
+
+## The provisional flag
+
+When fewer than approximately three sessions have completed, the narrative is marked `provisional`. The cohort view renders this with a visible badge next to the summary header. Patterns identified from one or two sessions carry much less signal than patterns from a full class run, and the narrative text says so explicitly.
+
+<Note>
+  The narrative is generated fresh each time you open the cohort view — it reflects all completed sessions at the moment of the request. There is no caching step, so opening the view partway through a lab session will give you a partial picture labelled provisional, while opening it the following day will reflect the full cohort.
+</Note>
+
+## The exercise library
+
+The cohorts list at `/cohorts` shows every published exercise as a card. Each card displays:
+
+- Sessions started and completed (with a completion percentage).
+- The median and maximum number of spec iterations students needed.
+- The divergence breakdown across drift, revision, and bug.
+- The single most-missed spec-gate dimension on first submission.
+- The number of help requests the exercise generated.
+
+Clicking a card opens the full cohort view for that exercise. The list is ordered by publication date.
+
+## How to act on the cohort narrative
+
+The narrative is descriptive, not prescriptive — Opus is explicitly instructed not to propose curricular changes or rewrite exercises. The information is there so you decide what to do with it.
+
+A useful pattern: after a full cohort run, check the **difficulties** list and compare it against the **most-missed dimensions** data. If the same dimension appears in both, it is likely the exercise is surfacing a real gap. If the dimension was missed consistently on the first spec submission but alignment was high when students answered the divergence question, the gap may be in articulation rather than understanding.
+
+<Tip>
+  If the narrative says "This exercise performed as expected" and the divergence mix roughly matches what you put in the expected divergences when authoring, the exercise is doing exactly what it was designed to do. Opus is instructed to say so plainly — a flat summary on a well-calibrated exercise is a good outcome, not a sign the tool has nothing to report.
+</Tip>

@@ -1,0 +1,69 @@
+---
+title: "Intent-diff: comparing spec to code"
+description: "At code submission, Opus compares the final approved spec to the submitted code, classifying each meaningful gap as drift, revision, or bug for Phase 3."
+---
+
+When a student submits their code at the end of Phase 2, Opus performs an intent-diff — comparing the final approved specification against the submitted code to find places where they don't line up. Each gap is classified, assigned a confidence level, and turned into a neutral question for the student. The instructor sees Opus's private prediction of what the student will say before hearing it.
+
+## What the intent-diff produces
+
+The `IntentDiffOutput` schema wraps an array of `IntentDiffDivergenceOutput` objects:
+
+```typescript
+// from src/lib/opus/schemas.ts
+const IntentDiffDivergenceOutput = z.object({
+  divergence_id: z.string(),
+  initial_classification: DivergenceCategory,  // "drift" | "revision" | "bug"
+  initial_confidence: Confidence,              // "high" | "medium" | "low"
+  predicted_justification: z.string(),          // instructor-visible prediction
+  student_facing_question: z.string(),          // neutral question shown to the student
+  evidence_from_spec: z.string(),
+  evidence_from_code: z.string(),
+});
+```
+
+After the divergences are created they are stored on the session as `Divergence[]`. The post-hoc re-classifier later fills in `alignment`, `finalClassification`, and `finalClassificationReason` once the student responds.
+
+## Three divergence categories
+
+| Category | Definition |
+|----------|------------|
+| `drift` | The code does less than the spec required, or omits something the student promised — usually not deliberate. |
+| `revision` | The code implements a coherent alternative that still satisfies the spec. The student changed their mind mid-task, often for good reasons. |
+| `bug` | The code attempts what was specified but fails mechanically — off-by-one, wrong operator, type error. |
+
+<Tip>
+  When the evidence between `drift` and `revision` is ambiguous, Opus classifies as `revision`. The system prompt describes this as an asymmetric cost rule: a false-drift classification (accusing a legitimate revision) damages trust with the student; a false-revision (missing a drift) at worst misses one intervention. When confidence is `low`, the post-hoc re-classifier finalises the category after the student responds.
+</Tip>
+
+## What the student sees vs. what the instructor sees
+
+The student only ever sees `student_facing_question` — a neutral, non-accusatory prompt that does not reveal the classification. Opus is instructed never to presuppose a category: "Your spec required X; your code doesn't do X" is forbidden phrasing. The canonical form is: *"Your spec said X; your code does Y. Can you tell me about that?"*
+
+The instructor sees `predicted_justification` — what Opus predicts the student will say when asked. This prediction is calibrated to the student's level:
+
+- `week_1_2`: short, concrete, often about forgetting — "I forgot about the capital letters."
+- `week_3_6`: partial reasoning about trade-offs — "I changed it because my first version had a bug I couldn't find."
+- `week_7_plus`: strategic or architectural reasoning — "A hashmap would have worked but the input is small so the nested loop's simplicity wins."
+
+## What does not count as a divergence
+
+The system prompt is explicit about cases that are **not** flagged:
+
+- A behavior the spec and the code **agree** on is never a divergence, even if it is an edge case.
+- Stylistic choices — variable names, whitespace, formatting — are not flagged.
+- Local optimizations that don't change observable behavior (list comprehension vs. loop for the same output) are not flagged.
+- A spec placeholder (e.g. "prints Hello NAME!") filled in correctly by an f-string or string concatenation is not a divergence — the code substitutes the real variable at the right position.
+- In-session revisions recorded by the student during Phase 2 update the effective intent. Code that matches a stated revision is not flagged.
+
+<Note>
+  If there are no meaningful divergences, Opus returns `{ "divergences": [] }`. The system prompt instructs it not to invent divergences to have something to show — false positives drain trust in the tool.
+</Note>
+
+## After the student responds
+
+Once the student answers each divergence question in Phase 3, the post-hoc re-classifier (`src/lib/opus/prompts/post-hoc.ts`) compares the student's response to `predicted_justification` and updates the `Divergence` record with:
+
+- `alignment`: `"aligned"`, `"partial"`, or `"diverged"` — how closely the student's actual answer matched the prediction.
+- `finalClassification`: the updated category after hearing the student's own explanation.
+- `finalClassificationReason`: a one-sentence summary of why the final classification was chosen.

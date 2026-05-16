@@ -1,0 +1,57 @@
+---
+title: "Monitoring the live class dashboard"
+description: "The live dashboard at /live shows one row per active student with a real-time natural-language summary of their current thinking, flags, and help requests."
+---
+
+The live dashboard at `/live` gives instructors a real-time view of every active student in a single scrollable list. Each row contains a plain-language summary of where the student is in their thinking — not a phase number or a timer, but a sentence describing what appears to be happening in their head right now. The goal is to let an instructor scan the room in seconds and decide exactly who needs attention and who is productively working through a problem on their own.
+
+## What each row shows
+
+Each session row displays:
+
+- **Student ID** — truncated for readability, links to the full reasoning trail at `/reasoning/[sid]`.
+- **Current phase** — labelled as specification (1), writing (2), or review (3).
+- **Live summary text** — a one-sentence Opus-generated description. For example: *"the student wrote 'n >= 0' and 'negative inputs are handled' in the same spec; they're confused about what committing to behavior looks like, not about Fibonacci."* The register is deliberately concrete so the instructor can act on it in under five seconds.
+- **Flags** — any active signals from the `LiveSummaryFlag` enum:
+
+| Flag | Meaning |
+|------|---------|
+| `help_requested` | The student has raised an active help flag |
+| `alignment_failure` | The most recent divergence response did not match Opus's prediction |
+| `proactive_revision` | The student invoked "change of plan" during Phase 2 |
+| `stuck_signal` | More than five minutes with no state change, or three or more failed spec iterations on the same gap |
+| `high_performer` | Passed the spec gate in one iteration with no significant divergences — probably does not need attention right now |
+
+Rows are colour-coded by priority: red for help requests and stuck signals, amber for alignment failures and proactive revisions, green for high performers.
+
+## Help requests
+
+When a student raises a help flag, a banner appears at the top of the dashboard listing every student currently waiting, with the time elapsed since the request. Clicking any entry in the banner opens the student's reasoning trail directly. Help-flagged rows cannot be dismissed — they require explicit resolution from the reasoning view.
+
+<Warning>
+  A session row with an unresolved help request stays visible even when the presence filter is set to "Live only" and the student's heartbeat has gone quiet. The row is only removed from the banner when the help request is resolved by the instructor from the reasoning trail.
+</Warning>
+
+## How it works technically
+
+The dashboard subscribes to a Server-Sent Events stream at `/api/live/stream`. The stream has three triggers:
+
+1. **10-second snapshot tick** — rebuilds the session list from the database without calling Opus. This keeps phase numbers, iteration counts, help-request status, and presence indicators current without LLM cost. It also doubles as the connection keepalive.
+2. **10-second Opus summary refresh** — calls Opus once per active session and pushes updated summaries to all connected dashboards. Up to four sessions are refreshed in parallel per cycle; sessions where the student's heartbeat has been silent for more than 5 minutes are skipped.
+3. **Event-driven push** — whenever a session event fires (`phase_transition`, `alignment_failure`, `help_request`, `help_resolved`, `revision`, or `summary_refresh`) the stream immediately rebuilds the snapshot and pushes it. A brand-new session also triggers a one-shot Opus summary so the row does not sit on "Awaiting first summary…" for a full refresh cycle.
+
+The event bus is an in-process Node.js `EventEmitter`. There is no Redis or external message broker.
+
+## Session window and presence
+
+The dashboard shows sessions active in the last 30 minutes. Within that window, presence is inferred from the heartbeat:
+
+- **Live** — last heartbeat within two minutes.
+- **Stepped away** — two to five minutes since last heartbeat.
+- **Left** — more than five minutes since last heartbeat.
+
+You can filter to live sessions only (the default) or show all sessions in the window. Sessions that have gone quiet without an unresolved help request can be manually dismissed; they reappear automatically if the student's heartbeat ticks forward again.
+
+<Tip>
+  Use the `high_performer` flag as a routing signal, not just a compliment. If several rows are green, you can safely concentrate attention on the red and amber rows — the `stuck_signal` flag in particular identifies students who need a nudge rather than a full explanation.
+</Tip>

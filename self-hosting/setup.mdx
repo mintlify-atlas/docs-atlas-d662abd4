@@ -1,0 +1,93 @@
+---
+title: "Running Maieutic locally"
+description: "Set up Maieutic on your own machine with Node.js 20+, an Anthropic API key, and a few terminal commands. No hosted infrastructure required."
+---
+
+Maieutic runs locally as a Next.js 16 app backed by a SQLite database. The only external dependency is an Anthropic API key — everything else, including the database, lives on your machine. No cloud account or hosted service is required.
+
+## Prerequisites
+
+- **Node.js 20 or higher** — verify with `node --version`
+- **An Anthropic API key** (`sk-ant-...`) — create one at [console.anthropic.com](https://console.anthropic.com)
+- **Git** — to clone the repository
+
+## Setup
+
+<Steps>
+  <Step title="Clone the repository">
+    ```bash
+    git clone https://github.com/bcanata/maieutic.git && cd maieutic
+    ```
+  </Step>
+
+  <Step title="Install dependencies">
+    ```bash
+    npm install
+    ```
+  </Step>
+
+  <Step title="Copy the environment file">
+    ```bash
+    cp .env.example .env.local
+    ```
+
+    Open `.env.local` and set both variables:
+
+    ```bash
+    ANTHROPIC_API_KEY=sk-ant-...
+    DATABASE_URL="file:./dev.db"
+    ```
+
+    `ANTHROPIC_API_KEY` is required for all Opus calls. `DATABASE_URL` points to the local SQLite file that Prisma creates on first migration.
+  </Step>
+
+  <Step title="Apply database migrations">
+    ```bash
+    npx prisma migrate dev
+    ```
+
+    This creates `dev.db` and generates the Prisma client. See [Database setup and schema](/self-hosting/database) for details on the data model.
+  </Step>
+
+  <Step title="Seed demo data (optional)">
+    ```bash
+    npm run reset-demo
+    ```
+
+    This loads three demo students — Ana, Beto, and Carmen — with realistic sessions so the instructor dashboard has data to display. See [Loading demo data and fixtures](/self-hosting/demo-data) for what the script seeds.
+
+    <Warning>
+      `npm run reset-demo` **destroys all existing data** and replaces it with the demo fixtures. Skip this step if you want to start with a blank database.
+    </Warning>
+  </Step>
+
+  <Step title="Start the development server">
+    ```bash
+    npm run dev
+    ```
+  </Step>
+
+  <Step title="Open the app">
+    Navigate to [http://localhost:3000](http://localhost:3000).
+
+    The landing page asks whether you are a student or a teacher — no login required. Students are routed to the exercise list; instructors are routed to the live dashboard.
+  </Step>
+</Steps>
+
+## Available scripts
+
+| Command | Description |
+|---|---|
+| `npm run dev` | Start the development server |
+| `npm run build` | Build for production |
+| `npm start` | Start the production server |
+| `npm run lint` | Run ESLint |
+| `npm test` | Run unit tests with Vitest |
+| `npm run test:opus` | Run Opus integration tests (requires a live API key and model) |
+| `npm run test:e2e` | Run Playwright end-to-end tests |
+| `npm run reset-demo` | Wipe the database and replay demo fixtures |
+| `npm run capture-fixtures` | Run real Opus sessions and save the responses as test fixtures |
+
+<Warning>
+  `npm run test:opus` and `npm run capture-fixtures` make real API calls to Anthropic and will consume credits from your API key. Only run them when you need fresh fixtures or are actively testing Opus prompt changes.
+</Warning>

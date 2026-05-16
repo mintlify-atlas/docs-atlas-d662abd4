@@ -1,0 +1,106 @@
+---
+title: "Authoring exercises with Opus scaffolding"
+description: "Type a plain-text problem prompt; Opus returns reviewable spec-gate dimensions, expected divergences, and a student level in seconds. Edit, then publish."
+---
+
+Instructors author exercises by writing a plain-text problem prompt — the same instruction a student would read. Opus reads it and returns the scaffolding that will gate the student's specification: a set of concrete questions the student must answer before the code editor unlocks, the divergence patterns Opus expects novices to produce, and an inferred difficulty level. You review each field, edit anything that needs adjustment, then publish. The exercise appears in the student exercise list immediately.
+
+## The authoring workflow
+
+<Steps>
+  <Step title="Navigate to /authoring">
+    Open `/authoring` in your browser. The instructor navigation bar links here from any instructor page.
+  </Step>
+  <Step title="Enter a title and problem prompt">
+    Write the exercise title and instructions in plain text, exactly as a student would read them. For example:
+
+    ```text
+    Write a function that counts vowels in a string.
+    ```
+
+    Select the curriculum unit this exercise belongs to. The unit tells Opus which Python tools the student has been taught so far and constrains the dimensions it generates accordingly.
+  </Step>
+  <Step title="Generate scaffolding">
+    Click **Generate scaffolding**. Opus returns a `ScaffoldingOutput` object — the response is validated against the schema at the boundary before the UI renders it. Latency is displayed next to the button so you know how long the call took.
+  </Step>
+  <Step title="Review and edit each field">
+    Three sections appear: specification-gate dimensions, expected divergences, and unit/student level. Every field is editable inline. Each item shows a source badge — `Opus`, `Edited`, or `Added` — so the authoring trace is preserved.
+
+    If Opus notes ambiguity in your prompt, a **Prompt quality note** banner appears above the sections. You can publish anyway, but the note describes why the scaffolding may have lower pedagogical value.
+  </Step>
+  <Step title="Publish">
+    Tick the review confirmation checkbox (or edit at least one field — the Publish button enables on either condition) and click **Publish exercise**. The exercise is immediately available to students.
+  </Step>
+</Steps>
+
+## What Opus generates
+
+The `ScaffoldingOutput` schema defines the four top-level fields Opus returns:
+
+```typescript
+// src/lib/opus/schemas.ts
+const ScaffoldingOutput = z.object({
+  spec_gate_dimensions: z.array(ScaffoldingDimensionOutput).min(1),
+  expected_divergences: z.array(ScaffoldingDivergenceOutput).min(1),
+  student_level: StudentLevel, // "week_1_2" | "week_3_6" | "week_7_plus"
+  prompt_quality_note: z.string().nullable(),
+});
+```
+
+<AccordionGroup>
+  <Accordion title="Spec gate dimensions">
+    Each dimension is a concrete question the student's natural-language specification must answer before the code editor unlocks. A dimension has three fields:
+
+    - `id` — a `snake_case` slug used to track which dimensions a student has addressed across spec iterations.
+    - `description` — the question itself, specific enough that "assume valid input" or a concrete answer are both acceptable commitments. Generic labels like "handle edge cases" are explicitly forbidden by Opus's prompt.
+    - `rationale` — why this question matters pedagogically. Rationale is used by Opus when asking follow-up questions; it is not shown verbatim to students.
+
+    Dimension count is proportional to exercise complexity: trivial prompts warrant two or three dimensions, complex prompts five to seven. Opus is instructed not to pad simple exercises.
+
+    When you edit a dimension the source badge changes from `Opus` to `Edited`. When you add a dimension yourself the badge shows `Added`. The original Opus output is preserved separately so the authoring trace is never lost.
+  </Accordion>
+
+  <Accordion title="Expected divergences">
+    Each divergence is a specific pattern Opus anticipates will appear in student code. Divergences are categorised as:
+
+    - `drift` — code does less than the spec required (the most common category).
+    - `revision` — code implements a coherent alternative that still satisfies the spec — a genuine refactor.
+    - `bug` — code attempts what was specified but fails.
+
+    Every pattern must be specific to the exercise. "Student might write inefficient code" is not an acceptable pattern; "student iterates the string twice — once to lowercase, once to count — when a single pass would suffice" is. Opus's prompt enforces this.
+
+    Expected divergences are used downstream to calibrate the intent-diff analysis in Phase 3: when Opus compares a student's code to their spec, it has the instructor's anticipated patterns as context.
+  </Accordion>
+
+  <Accordion title="Student level and unit">
+    Opus infers a `student_level` from the prompt — one of `week_1_2`, `week_3_6`, or `week_7_plus`. The level feeds into the curriculum unit the exercise is assigned to, and from there into how Opus calibrates dimensions: a `unit_1` exercise (Python fundamentals, no loops yet) gets different dimensions from a `unit_4` exercise (user-defined functions).
+
+    You can override the unit using the radio buttons. Changing the unit updates the student level automatically. The four units map to:
+
+    | Unit | Title | Key additions |
+    |------|-------|---------------|
+    | I | Python Fundamentals | Variables, math, type casting, strings, try/except |
+    | II | Control Structures | if/elif/else, for/while loops |
+    | III | Data Structures | Lists and dictionaries |
+    | IV | Functions | def, parameters, return, scope |
+  </Accordion>
+
+  <Accordion title="Prompt quality note">
+    When a prompt is vague or ambiguous, Opus sets `prompt_quality_note` to a string describing the problem. Maieutic renders this as a warning banner above the generated scaffolding. Opus never refuses to generate scaffolding on an ambiguous prompt — it produces the best output it can and flags the issue. You decide whether to publish.
+  </Accordion>
+</AccordionGroup>
+
+## Source tracking
+
+Every dimension and divergence carries a `source` field throughout its lifecycle:
+
+```typescript
+// src/lib/opus/schemas.ts
+export const Source = z.enum(["opus", "instructor_edited", "instructor_added"]);
+```
+
+This field is stored with the published exercise so the authoring trace is always available. The cohort analytics view can use it to distinguish Opus-generated scaffolding from instructor adjustments when reporting which dimensions students most commonly missed.
+
+<Tip>
+  The Publish button is intentionally gated: it enables only after you have either edited at least one field or explicitly ticked the review confirmation. This prevents accidentally publishing unreviewed Opus output.
+</Tip>

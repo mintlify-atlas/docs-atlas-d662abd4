@@ -1,0 +1,100 @@
+---
+title: "Phase 2: Writing code against your spec"
+description: "Monaco opens with your locked spec beside it. Autocomplete is off. Opus answers syntax questions and returns counter-questions for your own reasoning gaps."
+---
+
+Phase 2 is where you implement what you described. The Monaco editor opens with your approved spec displayed alongside it — the spec is the contract you are writing to, and it stays visible throughout. Your task is to write Python code that does what your spec says.
+
+## Key constraints
+
+**Autocomplete is explicitly disabled.** Every feature that would generate or complete code for you — inline suggestions, parameter hints, word-based completions, tab completion, snippet suggestions — is turned off. This is intentional. The skill being trained is deliberate, considered code writing, not fluent use of an IDE's autocomplete.
+
+```typescript
+// from src/components/student/PythonEditor.tsx
+const DISABLED_ASSIST_OPTIONS = {
+  quickSuggestions: false,
+  suggestOnTriggerCharacters: false,
+  parameterHints: { enabled: false },
+  wordBasedSuggestions: "off",
+  tabCompletion: "off",
+  inlineSuggest: { enabled: false },
+  acceptSuggestionOnEnter: "off",
+  snippetSuggestions: "none",
+};
+```
+
+You can run your code at any time using the **Run** button below the editor. A console panel captures stdout, stderr, and `input()` prompts so you can test interactively without leaving the page.
+
+## The Opus chat panel
+
+A chat panel sits alongside the editor throughout Phase 2. You can ask Opus questions at any time. Opus picks a mode for each message:
+
+<Tabs>
+  <Tab title="direct mode">
+    **Triggered by factual language or library questions** that are independent of your current reasoning.
+
+    Examples: "What is the syntax for a dictionary in Python?", "What does `sorted()` return?", "How do I read a file line by line?"
+
+    In direct mode, Opus answers concisely and may show a minimal example — not tied to your specific problem.
+  </Tab>
+  <Tab title="interrogative mode">
+    **Triggered when you ask about your own code or reasoning** about the current problem.
+
+    Examples: "Why does my loop terminate early?", "Is my approach correct?", "Why isn't my output right?"
+
+    In interrogative mode, Opus does not give the answer. It asks one or two counter-questions or points to a diagnostic technique, keeping the reasoning work with you.
+  </Tab>
+</Tabs>
+
+Each exchange is stored with its mode, so your instructor can see how you used Opus and what kinds of questions you asked.
+
+```typescript
+// from src/lib/opus/schemas.ts
+const Phase2ChatOutput = z.object({
+  mode: OpusMode, // "interrogative" | "direct"
+  response: z.string(),
+});
+```
+
+<Note>
+  When it is ambiguous whether a question is a reference question or a reasoning question, Opus leans interrogative — answering directly would substitute for your own thinking about your own problem.
+</Note>
+
+## Proposing a spec amendment
+
+Sometimes you realise while coding that your Phase 1 spec was incomplete or wrong. Maieutic allows you to propose a formal amendment rather than silently changing course. Use the **Revise plan** button in the editor toolbar.
+
+Each amendment requires:
+- **Amendment text** — what you are changing in the spec.
+- **Justification** — why you are changing it (the interface offers a set of categories: faster, simpler, more correct, or other).
+
+The amendment is recorded as a `Phase2Revision`:
+
+```typescript
+// from src/lib/opus/schemas.ts
+const Phase2Revision = z.object({
+  timestamp: z.string(),
+  amendmentText: z.string(),
+  justificationText: z.string(),
+});
+```
+
+Recorded revisions become part of the intent-diff analysis in Phase 3. Code that implements what a revision described is treated as intentional — Opus will not flag it as a divergence.
+
+## Autosave
+
+The editor autosaves your code to the server automatically on every change (with a short debounce). If you close the browser mid-session, your code is preserved. You will resume exactly where you left off.
+
+## Submitting
+
+When you are satisfied, press **Submit**. Maieutic:
+
+1. Persists your final code.
+2. Sends your spec and code to Opus for the intent-diff analysis.
+3. Transitions you to Phase 3 with the list of divergence questions.
+
+<Warning>
+  Submission triggers the Opus intent-diff — this may take a few seconds. The UI shows a loading indicator while it runs. Do not close the tab during this step.
+</Warning>
+
+If Opus finds no meaningful divergences between your spec and your code, the session closes immediately and is marked complete — Phase 3 is skipped.

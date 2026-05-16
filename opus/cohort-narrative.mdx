@@ -1,0 +1,66 @@
+---
+title: "Cohort narrative: post-exercise analytics"
+description: "After an exercise ends, Opus reads all session data and writes a narrative of solution techniques, common drifts, cohort strengths, and difficulties."
+---
+
+After a class has worked through an exercise, Opus reads all completed session data and writes a short narrative that gives instructors a picture of how the cohort engaged. The goal is descriptive, not prescriptive: Opus surfaces what happened, and the instructor decides what to do with it.
+
+## When it is generated
+
+The cohort narrative is computed on demand when the instructor opens the cohort view for an exercise. It is derived from all sessions whose `completedAt` field is set — sessions still in progress are not included.
+
+## The output schema
+
+```typescript
+// from src/lib/opus/schemas.ts
+const CohortNarrativeOutput = z.object({
+  narrative: z.string(),
+  solution_techniques: z.array(z.string()),
+  common_drifts: z.array(z.string()),
+  strengths: z.array(z.string()),
+  difficulties: z.array(z.string()),
+  provisional: z.boolean(),
+});
+```
+
+## What each field means
+
+| Field | Description |
+|-------|-------------|
+| `narrative` | A 2–3 sentence overview of how the cohort engaged with the exercise. |
+| `solution_techniques` | Common approaches students used to solve the problem — e.g. "most used a `try`/`except` around `float()` for input validation." |
+| `common_drifts` | Spec-to-code gaps that recurred across multiple students — e.g. "forgot to handle empty input." |
+| `strengths` | Dimensions where the cohort consistently performed well. |
+| `difficulties` | Dimensions where the cohort consistently struggled. |
+| `provisional` | `true` when there are fewer than three completed sessions. The narrative is a best-effort estimate and says so explicitly. |
+
+<Note>
+  Each list should have 1–4 items. The system prompt instructs Opus to prefer fewer, concrete bullets over padded generalities. It explicitly forbids statements like "students found the exercise challenging" — every bullet must be grounded in aggregate data.
+</Note>
+
+## Example output
+
+An exercise where most students missed case-sensitivity on the first spec submission might produce a narrative like:
+
+> *"Across 24 sessions, the cohort mostly treated this as a parsing problem rather than an iteration problem: 77% of divergences were drift on input validation, and 22/24 students omitted input-type behavior from their first spec."*
+
+With `common_drifts` like:
+
+- *"Missing input validation — no check for non-string / empty input (18 of 31 drifts)."*
+- *"Wrong return type on edge cases — returned None instead of 0 on empty input (7 drifts)."*
+
+And `difficulties` like:
+
+- *"Committing to input-type behavior in the spec — 22/24 missed it on round 1."*
+
+## The provisional flag
+
+When fewer than three sessions have completed, `provisional` is set to `true` and the narrative opens with an explicit caveat: *"Only N sessions completed so far; patterns below are provisional."* Lists are kept short to avoid over-interpreting a thin sample.
+
+<Tip>
+  When the cohort data matches the instructor's configured `expected_divergences` — divergences roughly as expected, spec iterations in the normal range — Opus is instructed to say so plainly: *"This exercise performed as expected."* It does not invent a problem where none exists.
+</Tip>
+
+## How to use it
+
+The cohort narrative is the starting point for decisions about what to reuse, retire, or revise. If `common_drifts` shows a gap that recurred across most students, that dimension may need more explicit scaffolding. If `strengths` lists something the exercise was designed to elicit, the exercise is working. The `solution_techniques` field is useful for understanding whether students are engaging with the intended pattern or routing around it.

@@ -1,0 +1,83 @@
+---
+title: "Phase 3: Explaining spec-to-code divergences"
+description: "Opus compares your spec and final code, then asks a neutral question for each gap it finds. Your answers are the learning signal your instructor uses."
+---
+
+Phase 3 is where Maieutic's core learning signal is generated. The question is not whether your code runs correctly — it is whether you can explain where it diverged from your own spec, and why. That self-awareness is the skill the tool is designed to develop: reading your own code critically against your own stated intent.
+
+## How divergences are generated
+
+When you submit in Phase 2, Opus performs an **intent-diff**: a careful comparison of your final spec (as modified by any in-session revisions you recorded) against your final code. For every place the two meaningfully disagree, Opus produces a `Divergence`:
+
+```typescript
+// from src/lib/opus/schemas.ts — student-visible fields
+const Divergence = z.object({
+  divergenceId: z.string(),
+  studentFacingQuestion: z.string(), // neutral question shown to you
+  evidenceFromSpec: z.string(),      // the relevant part of your spec
+  evidenceFromCode: z.string(),      // the relevant part of your code
+  // filled after you respond:
+  studentResponse: z.string().nullable(),
+  alignment: Alignment.nullable(),   // "aligned" | "partial" | "diverged"
+  // ...
+});
+```
+
+The `studentFacingQuestion` is worded neutrally — it never presupposes a classification or implies you made a mistake. It is phrased as an observation and an invitation to explain: *"Your spec said X; your code does Y. Can you tell me what happened there?"*
+
+<Note>
+  Opus intentionally does not flag stylistic differences, variable naming, or implementation choices that do not change observable behavior. Only divergences a competent grader would want you to reflect on are surfaced.
+</Note>
+
+## The three divergence categories
+
+Opus classifies each divergence internally, but the classification is not shown to you — only the neutral question is. Your instructor sees the classification.
+
+| Category | Meaning |
+|----------|---------|
+| `drift` | The code does less than the spec required, or omits something promised. Usually not deliberate. |
+| `revision` | The code implements a coherent alternative that still satisfies the spec. The student changed their mind mid-task. |
+| `bug` | The code attempts what was specified but fails mechanically — off-by-one, type error, wrong variable, etc. |
+
+When the evidence is ambiguous between drift and revision, Opus classifies as revision. Falsely accusing a student of drift when they made a legitimate design choice damages trust in the tool.
+
+## What you do
+
+The divergence questions are presented one at a time. For each:
+
+1. Read the question — it includes a reference to what your spec said and what your code does.
+2. Write your response in your own words. Explain what happened: did you forget, did you change your mind, did you spot a bug and try to fix it?
+3. Submit your answer.
+
+<Tip>
+  There is no right or wrong answer to a divergence question. The point is to articulate your own understanding of the gap. Even "I forgot about that case" is a complete and valuable answer.
+</Tip>
+
+If you have more than one divergence, you can navigate between questions using the numbered buttons below the active card. Answered questions are marked and can be reviewed at any time.
+
+## Post-hoc analysis
+
+After you submit each answer, Opus runs a **post-hoc re-classification**. It compares your response to a private predicted justification it generated at the same time as the divergence question — before you answered — and produces an alignment score:
+
+| Alignment | Meaning |
+|-----------|---------|
+| `aligned` | Your explanation matches or closely echoes what Opus predicted you would say. |
+| `partial` | Your explanation addresses the divergence but differs from the prediction in meaningful ways. |
+| `diverged` | Your explanation and the prediction are substantially different — this flags a genuine gap for your instructor to review. |
+
+The `alignment` score and the final classification are **instructor-visible only**. You see the question and your own answer; your instructor sees the full picture.
+
+## Final revision pass
+
+After you answer all divergence questions, Maieutic offers you a choice:
+
+- **Revise your code** — the editor reopens with your final code and your divergence answers visible alongside it. You can make changes in light of what you just articulated.
+- **Finish without revising** — the session closes as-is.
+
+<Warning>
+  The revision pass is a coda, not a do-over. Your original Phase 2 code, your divergence answers, and the alignment classifications are frozen as the learning signal — they do not change when you revise. The instructor sees both the original submission and any revision you made.
+</Warning>
+
+## Session completion
+
+Once you choose to revise or skip, the `/finalize` endpoint records your choice and advances the session to phase 4 (closed). The exercise is now marked complete in your exercise list. From this point, a **Start fresh** button becomes available if you want to work through the exercise again from scratch.

@@ -1,0 +1,66 @@
+---
+title: "Phase 1: Writing your specification"
+description: "Before touching the editor, you describe what the program should do. Opus asks questions about every gap until your spec addresses each required dimension."
+---
+
+Phase 1 exists because the hardest part of programming is not the syntax — it is deciding what the program should actually do. Maieutic enforces a discipline that experienced developers apply naturally: commit to the behavior in writing before touching the editor. Opus acts as a Socratic interlocutor, not a hint machine. It reads your description and asks the questions an experienced implementer would obviously ask — questions whose answers only you can supply, because they are commitments about the behavior of *your* program.
+
+## What you do
+
+Write a plain-language description of what the program should do in the text area. There is no template to fill in and no format to follow. A few sentences are usually enough to get started. When you are ready, submit the spec. Opus evaluates it and either passes you to Phase 2 or returns questions you need to address before resubmitting.
+
+<Tip>
+  Your previous spec text is preserved between rounds — you edit and extend it rather than retyping from scratch each time.
+</Tip>
+
+## What Opus does
+
+Your instructor configured a set of **spec dimensions** when they authored the exercise: concrete behavioral commitments the spec must address. Examples might include how the program handles empty input, whether comparisons are case-sensitive, or what the program returns at a boundary condition.
+
+Opus reads your spec against those dimensions and does three things:
+
+1. Identifies which configured dimensions your spec now addresses.
+2. Identifies which dimensions are still open — and asks a question about each one.
+3. Optionally surfaces **emergent gaps** it considers material beyond the configured list. It can ask about these, but they do not block the gate — once all configured dimensions are addressed, the spec passes.
+
+<Note>
+  Opus never rewrites your spec for you and never collapses its questions to answers. Each question is designed so that the only valid response is a concrete commitment you add to your own text.
+</Note>
+
+## The iteration loop
+
+Each round produces one `Phase1Iteration` record:
+
+```typescript
+// from src/lib/opus/schemas.ts
+const Phase1Iteration = z.object({
+  timestamp: z.string(),
+  studentSpecText: z.string(),
+  opusQuestions: z.array(z.string()),
+  gapsIdentified: z.array(z.string()),      // dimension ids still unaddressed
+  gapsAddressedThisRound: z.array(z.string()),
+  emergentGaps: z.array(z.object({
+    description: z.string(),
+    question: z.string(),
+  })).default([]),
+  passed: z.boolean(),
+});
+```
+
+`passed` is `true` if and only if `gapsIdentified` is empty — all configured dimensions have been addressed. Emergent gaps do not affect this field.
+
+The number of questions Opus asks per round is calibrated to your level: one or two questions for `week_1_2` students (to avoid cognitive overload), up to four for `week_7_plus` students.
+
+## Asking for help
+
+A **Help, I'm stuck** button is available throughout Phase 1. Pressing it records a help request against your session and signals your instructor's live dashboard immediately. A pending-help overlay appears on your screen; it clears when your instructor arrives or when you cancel.
+
+<Warning>
+  Only one unresolved help request is tracked at a time. If you press the button and then figure it out yourself, you can cancel the request from the overlay before your instructor arrives.
+</Warning>
+
+## What "passing" means
+
+The spec gate closes — and you advance to Phase 2 — when `passed` is `true`: every instructor-configured dimension has received a concrete commitment in your spec text. Any emergent gaps Opus raised are visible to you as informational questions you can address in your own time.
+
+Once the spec passes it is **locked**. You cannot edit it in Phase 2. If you discover during coding that you need to change it, Phase 2 provides a formal amendment mechanism — see [Phase 2: Coding](/student/phase-2-coding).

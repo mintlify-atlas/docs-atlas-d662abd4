@@ -1,0 +1,27 @@
+---
+title: "Instructor tools overview"
+description: "Author exercises, monitor the live class dashboard, review per-student reasoning, and read cohort analytics — instructor tools that need no login."
+---
+
+Maieutic gives instructors three purpose-built views that surface learning signals a traditional lab cannot. You author exercises by describing them in plain text and letting Opus generate the specification scaffolding. During a session you watch a live dashboard that summarises, in plain language, where every active student is in their thinking. After a session you can open any student's full reasoning trail or read a cohort-level narrative of how the class engaged with the exercise as a whole.
+
+No login is required. Navigate directly to `/live` to reach the dashboard, or use the instructor navigation to switch between tools.
+
+<Columns cols={2}>
+  <Card title="Authoring exercises" icon="pen-to-square" href="/instructor/authoring-exercises">
+    Type a plain-text prompt and review the spec-gate scaffolding Opus returns in seconds before publishing.
+  </Card>
+  <Card title="Live dashboard" icon="chart-line" href="/instructor/live-dashboard">
+    One row per active student, each with a real-time natural-language summary of where they are in their thinking.
+  </Card>
+  <Card title="Session reasoning view" icon="magnifying-glass" href="/instructor/session-reasoning">
+    A two-column view of one student's complete session — what they wrote on the left, what the system understood on the right.
+  </Card>
+  <Card title="Cohort analytics" icon="users" href="/instructor/cohort-analytics">
+    A short Opus-written narrative of how the cohort engaged with an exercise, with strengths, drifts, and a provisional flag.
+  </Card>
+</Columns>
+
+<Note>
+  Instructor pages are not behind an authentication gate. The landing page routes visitors based on whether they identify as a student or a teacher. Once on any instructor page you can navigate freely between `/live`, `/authoring`, `/cohorts`, and `/cohort/[id]` using the instructor navigation bar.
+</Note>

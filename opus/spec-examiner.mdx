@@ -1,0 +1,60 @@
+---
+title: "Spec examiner: gating the editor unlock"
+description: "Every Phase 1 spec submission is evaluated by Opus against instructor-configured dimensions; the editor stays locked until all dimensions are addressed."
+---
+
+The spec examiner is called every time a student submits a draft specification in Phase 1. It reads the submission against the exercise's instructor-configured `SpecDimension` list and returns a set of follow-up questions for any commitments the student has not yet made. The cycle repeats until the spec passes — at which point the code editor unlocks.
+
+## What the examiner receives
+
+Each call to the spec examiner includes three pieces of context:
+
+- **The student's current spec text** — the full draft as submitted this round.
+- **The exercise's `SpecDimension` list** — the instructor-configured set of concrete behavioral commitments the spec must address. Each dimension has an `id`, a `description` shown to Opus, and an internal `rationale` Opus sees but never quotes to the student.
+- **Prior iteration history** — every previous round in the session: what the student wrote, which questions Opus asked, and which dimension ids were still open. This lets Opus avoid repeating questions already answered.
+
+## What it returns
+
+```typescript
+// from src/lib/opus/schemas.ts
+const SpecExaminerOutput = z.object({
+  gaps_addressed: z.array(z.string()),    // dimension ids addressed this round
+  gaps_still_open: z.array(z.string()),   // dimension ids still unaddressed
+  emergent_gaps: z.array(
+    z.object({ description: z.string(), question: z.string() })
+  ),
+  questions: z.array(z.string()),         // follow-up questions shown to the student
+  passed: z.boolean(),
+});
+```
+
+`passed` is `true` if and only if `gaps_still_open` is empty — that is, every instructor-configured dimension id appears in `gaps_addressed`. Emergent gaps Opus notices beyond the configured list are surfaced in `questions` and recorded in `emergent_gaps`, but they do not block passing.
+
+## The iteration loop
+
+Each round's result is stored as a `Phase1Iteration`. The cumulative set of addressed dimension ids is tracked in `Phase1Data.instructorConfiguredDimensionsAddressed` across rounds, so a dimension addressed in round 2 is not re-asked in round 3. The iteration continues until `passed: true`.
+
+<Tip>
+  A dimension is considered "addressed" only when the spec makes a concrete commitment — not when it vaguely mentions the topic. "The function handles empty input" does not address the empty-input dimension; "Returns 0 when the input string is empty" does. The system prompt instructs Opus to err on the side of strictness for `week_7_plus` students and leniency for `week_1_2`.
+</Tip>
+
+## Prompting strategy
+
+The system prompt (`SPEC_EXAMINER_SYSTEM` in `src/lib/opus/prompts/spec-examiner.ts`) instructs Opus to behave as a Socratic examiner, not a spec writer:
+
+- Opus does **not** suggest content, rewrite the spec, or provide hints that collapse to answers.
+- It asks questions whose answer must be a concrete commitment the student adds themselves.
+- Question volume is calibrated to student level: one to two questions per round for `week_1_2`, up to four for `week_7_plus`.
+- Vocabulary is calibrated to the curriculum unit: Opus never phrases a question around `if`/`else` for a `unit_1` student who has not learned branching yet.
+
+<AccordionGroup>
+  <Accordion title="Commitment by omission">
+    A dimension can be addressed by omission. If a student's spec lists vowels as `a, e, i, o, u` without mentioning `y`, that is a concrete commitment that `y` is not a vowel — so the `y_as_vowel` dimension is marked addressed. The few-shot example in the user turn demonstrates this reading explicitly to prevent weaker-model behavior.
+  </Accordion>
+  <Accordion title="Emergent gaps">
+    Opus may notice behavioral gaps beyond the configured dimension list — for example, an unstated assumption about Unicode. These are returned in `emergent_gaps` and included in `questions` so the student can address them voluntarily. They do not appear in `gaps_still_open` and cannot delay the gate from opening.
+  </Accordion>
+  <Accordion title="Output-format leniency at week_1_2">
+    For `week_1_2` students, if the exercise prompt does not explicitly require a labeled output format, Opus accepts "prints the result" as addressing any `output_format` dimension. It will not ask the student to choose between a bare number and a labeled message when the prompt itself did not call for one.
+  </Accordion>
+</AccordionGroup>

@@ -1,0 +1,48 @@
+---
+title: "Phase 2 chat: Socratic coding assistant"
+description: "During Phase 2, Opus picks a mode per turn: direct for reference questions, interrogative for reasoning questions — keeping students in the reasoning seat."
+---
+
+During Phase 2 students can ask Opus questions while coding. Opus decides on every message which mode to respond in. The choice is not made by a separate classifier: it is part of the LLM response itself, returned alongside the reply text in a single JSON object.
+
+## The two modes
+
+The `OpusMode` enum in `src/lib/opus/schemas.ts` has exactly two values:
+
+- **`direct`** — for reference questions about syntax, built-in functions, or language features that are independent of the student's own problem. Opus answers concisely and may include a minimal code example, but the example is never tied to the student's current problem. Example trigger: *"What is the syntax for a dictionary in Python?"*
+
+- **`interrogative`** — for reasoning questions about the student's own code or logic. Opus does not rewrite or show code, does not give the answer, and instead returns one or two counter-questions or a diagnostic technique that keeps the student in the reasoning seat. Example trigger: *"Why does my loop terminate early?"*
+
+## The output schema
+
+```typescript
+// from src/lib/opus/schemas.ts
+const Phase2ChatOutput = z.object({
+  mode: OpusMode, // "interrogative" | "direct"
+  response: z.string(),
+});
+```
+
+Both the mode selection and the response text are validated by Zod at the call boundary. The mode is recorded on every `Phase2Exchange` stored in `Phase2Data.opusExchanges`, so instructors can see the full breakdown of direct vs. interrogative turns in the session reasoning view.
+
+## How the mode is selected
+
+Opus receives the exercise prompt, the student's frozen specification, the current code in the editor, and the last six exchanges of chat history. It classifies the student's intent from these signals alone — no separate intent-detection call is made.
+
+The system prompt (`PHASE2_CHAT_SYSTEM` in `src/lib/opus/prompts/phase2-chat.ts`) describes edge cases explicitly:
+
+- *"What is the syntax for a list comprehension that filters evens?"* → `direct` (generic language reference)
+- *"Write me a list comprehension for filtering evens in my problem"* → `interrogative` (thinly disguised implementation request)
+- When ambiguous, Opus leans `interrogative` only when answering directly would substitute for the student's own reasoning about their current problem.
+
+<Note>
+  The system prompt explicitly notes that refusing reference questions drives students to an external LLM and defeats the tool. Direct answers to genuine syntax questions are correct behaviour, not a pedagogical failure.
+</Note>
+
+## The pedagogical logic
+
+The Socratic method underlies the mode split. Students who receive direct answers to reasoning questions — "why doesn't my logic work?" — are spared the thinking that builds debugging intuition. Students who receive counter-questions develop a habit of reading their own code as a diagnostic artifact. The mode is recorded so the signal is available to the instructor: a session with many `interrogative` turns and few `direct` turns usually indicates a student working on their own reasoning rather than looking up syntax.
+
+## What instructors see
+
+Each `Phase2Exchange` carries the `opusMode` field. In the session reasoning view, instructors can read the full chat log with modes annotated, and see at a glance how many reasoning questions the student brought to Opus versus how many were reference lookups.

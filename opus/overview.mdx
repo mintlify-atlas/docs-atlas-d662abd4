@@ -1,0 +1,56 @@
+---
+title: "How Claude Opus powers Maieutic"
+description: "Maieutic calls claude-opus-4-7 at seven moments: scaffolding, spec gate, Phase 2 chat, intent-diff, live summaries, post-hoc scoring, and cohort narrative."
+---
+
+Opus (`claude-opus-4-7`) is called at exactly seven moments in a student's and instructor's experience. Every call is a carefully-prompted conversation — not a code-generation task — and the prompts are readable in `src/lib/opus/prompts/`. Zod validates every LLM response at the boundary: if Opus returns a malformed payload, the call fails rather than storing bad data. On a validation failure the client automatically retries once with a corrective follow-up message before throwing.
+
+## The seven moments
+
+<Steps>
+  <Step title="Scaffolding (instructor authoring)">
+    When an instructor types a plain-text exercise prompt, Opus generates the specification scaffolding: the `spec_gate_dimensions` (concrete commitments the student's spec must address), `expected_divergences` (patterns of drift, revision, and bug the exercise is likely to produce), and an inferred `student_level`. The output is reviewable and editable field by field before publishing. Prompt: `src/lib/opus/prompts/scaffolding.ts`.
+  </Step>
+  <Step title="Spec examiner (Phase 1)">
+    Every time a student submits a specification draft, Opus reads it against the instructor-configured `SpecDimension` list and asks questions about any commitments still missing. The editor stays locked until all configured dimensions are addressed. Emergent gaps Opus notices beyond the configured list are surfaced as optional questions but do not block passing. Prompt: `src/lib/opus/prompts/spec-examiner.ts`.
+  </Step>
+  <Step title="Phase 2 chat (Phase 2)">
+    While the student codes, a chat panel gives them access to Opus. On every message Opus classifies the question as either a reference question (syntax, built-in functions, language features — answered directly) or a reasoning question (the student's own logic — answered with a counter-question). The mode selection (`direct` or `interrogative`) is part of the LLM response, not a separate classifier call. Prompt: `src/lib/opus/prompts/phase2-chat.ts`.
+  </Step>
+  <Step title="Intent-diff (Phase 2 → 3 transition)">
+    When the student submits their code, Opus performs an intent-diff: it compares the final approved specification against the submitted code and identifies every meaningful place they don't line up. Each divergence is classified as `drift`, `revision`, or `bug`, assigned a confidence, and accompanied by a neutral student-facing question and an instructor-only predicted justification. Prompt: `src/lib/opus/prompts/intent-diff.ts`.
+  </Step>
+  <Step title="Live summary (ongoing)">
+    A one-sentence natural-language summary of where each active student is in their thinking is regenerated on every session change. The summary describes a cognitive state ("the student wrote 'n >= 0' and 'negative inputs are handled' in the same spec; they're confused about what committing to behavior looks like") rather than a phase number. Prompt: `src/lib/opus/prompts/live-summary.ts`.
+  </Step>
+  <Step title="Post-hoc re-classifier (Phase 3)">
+    After the student responds to a divergence question, Opus compares their answer against the predicted justification and produces a final classification (`drift`, `revision`, or `bug`), an alignment score (`aligned`, `partial`, or `diverged`), and a one-sentence reason. This is the signal that tells the instructor whether the student can explain their own code. Prompt: `src/lib/opus/prompts/post-hoc.ts`.
+  </Step>
+  <Step title="Cohort narrative (post-exercise)">
+    After a class has worked through an exercise, Opus reads all completed session data and writes a short narrative with solution techniques, common drifts, cohort strengths, and difficulties. It sets `provisional: true` when fewer than three sessions have completed. Prompt: `src/lib/opus/prompts/cohort-narrative.ts`.
+  </Step>
+</Steps>
+
+<Note>
+  Zod validates every LLM response at the call boundary using `callOpusAndParse` in `src/lib/opus/client.ts`. If Opus returns a malformed response the client retries once with a corrective message. After two failures it throws, so no invalid payload ever reaches the database.
+</Note>
+
+## Explore each prompt
+
+<Columns cols={2}>
+  <Card title="Spec examiner" icon="circle-check" href="/opus/spec-examiner">
+    How Opus interrogates each spec submission and what it takes to pass the spec gate.
+  </Card>
+  <Card title="Phase 2 chat" icon="message" href="/opus/chat-mode">
+    How Opus decides turn-by-turn whether to answer directly or return a counter-question.
+  </Card>
+  <Card title="Intent-diff" icon="code-compare" href="/opus/intent-diff">
+    How Opus compares the final spec to the final code and classifies each divergence.
+  </Card>
+  <Card title="Live summaries" icon="gauge" href="/opus/live-summary">
+    How the one-sentence cognitive summaries are generated and what the flags mean.
+  </Card>
+  <Card title="Cohort narrative" icon="users" href="/opus/cohort-narrative">
+    How Opus produces post-exercise analytics from aggregate session data.
+  </Card>
+</Columns>

@@ -1,0 +1,48 @@
+---
+title: "Environment configuration"
+description: "Maieutic requires two environment variables to run locally: your Anthropic API key and a SQLite database URL. No other configuration is needed to get started."
+---
+
+Maieutic reads its configuration from a `.env` or `.env.local` file in the project root. Copy `.env.example` to `.env.local` and set the two variables below — that is everything required to run the app locally.
+
+## Environment variables
+
+<ParamField path="ANTHROPIC_API_KEY" type="string" required>
+  Your Anthropic API key. Get one from [console.anthropic.com](https://console.anthropic.com). Maieutic uses this to call the `claude-opus-4-7` model at seven points in the student and instructor experience — spec examination, in-editor chat, intent-diff analysis, live session summaries, divergence classification, cohort narrative generation, and exercise scaffolding.
+
+  ```bash
+  ANTHROPIC_API_KEY=sk-ant-...
+  ```
+</ParamField>
+
+<ParamField path="DATABASE_URL" type="string" required default="file:./dev.db">
+  The database connection string. For local development, use a SQLite file path. The default value in `.env.example` creates `dev.db` in the project root.
+
+  ```bash
+  DATABASE_URL="file:./dev.db"
+  ```
+
+  If you want to migrate to Postgres, change the `provider` field in `prisma/schema.prisma` from `"sqlite"` to `"postgresql"` and update this URL to a valid Postgres connection string. No other code changes are required.
+</ParamField>
+
+## Language support
+
+Maieutic supports English and Spanish. Students can switch languages using the language switcher on the landing page. Translations are generated on demand the first time a student in a given language loads an exercise, then stored in the `ExerciseTranslation` table and served from cache on every subsequent request. No additional environment variable is needed to enable this — it uses the same `ANTHROPIC_API_KEY`.
+
+To invalidate a translation (for example, after editing an exercise's text), delete the relevant rows from the `ExerciseTranslation` table and the translation will be regenerated on the next request.
+
+## The `.env.example` file
+
+<Note>
+  `.env.example` is safe to commit to version control — it contains no real credentials. Copy it to `.env.local` (which is gitignored) and fill in your values there. Never commit `.env.local`.
+</Note>
+
+The full contents of `.env.example`:
+
+```bash
+# Copy this file to .env.local and fill in your key.
+# .env.local is gitignored; .env.example is safe to commit.
+
+ANTHROPIC_API_KEY=sk-ant-your-key-here
+DATABASE_URL="file:./dev.db"
+```

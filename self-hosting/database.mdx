@@ -1,0 +1,126 @@
+---
+title: "Database setup and schema"
+description: "Maieutic uses Prisma 6 with SQLite for local development. Understand the four data models and how to manage migrations and reset the database."
+---
+
+Maieutic uses Prisma 6 with SQLite for local development. The schema is designed so that swapping to Postgres is a one-line change in `prisma/schema.prisma` — no application code needs to change. All migrations live in `prisma/migrations/` and are applied automatically by the Prisma CLI.
+
+## Running migrations
+
+Apply all pending migrations and generate the Prisma client with:
+
+```bash
+npx prisma migrate dev
+```
+
+<Note>
+  The SQLite database file (`dev.db`) is gitignored. Prisma creates it automatically the first time you run `npx prisma migrate dev`.
+</Note>
+
+## Data models
+
+### Exercise
+
+Represents a single programming problem authored by an instructor.
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | String (slug) | Unique identifier, used in URLs (e.g. `vowels-demo`) |
+| `title` | String | Human-readable exercise name shown to students |
+| `instructorPromptText` | String | The plain-text prompt the instructor wrote |
+| `specGateDimensions` | JSON (`SpecDimension[]`) | Dimensions that a student's specification must address before the code editor unlocks |
+| `expectedDivergences` | JSON (`ExpectedDivergence[]`) | Patterns Opus expects to appear when student code diverges from the spec |
+| `studentLevel` | String | One of `week_1_2`, `week_3_6`, or `week_7_plus` |
+| `unit` | String | One of `unit_1`, `unit_2`, `unit_3`, or `unit_4` |
+| `publishedAt` | DateTime? | `null` until the instructor publishes the exercise |
+| `opusGeneratedDimensions` | JSON | Opus first-pass dimensions, preserved for audit |
+| `opusGeneratedDivergences` | JSON | Opus first-pass divergences, preserved for audit |
+| `opusGeneratedStudentLevel` | String | Opus first-pass level classification, preserved for audit |
+
+The `opusGenerated*` fields store the raw Opus output before the instructor edits it. They are not shown to students.
+
+### ExerciseTranslation
+
+A per-language cache of the student-visible text for an exercise.
+
+| Field | Type | Description |
+|---|---|---|
+| `exerciseId` | String | Foreign key to `Exercise` |
+| `lang` | String | Language code: `en` or `es` |
+| `title` | String | Translated exercise title |
+| `instructorPromptText` | String | Translated prompt text |
+| `createdAt` | DateTime | When the translation was generated |
+
+Translations are populated on demand the first time a student in that language loads the exercise. Subsequent requests read from this cache. To invalidate a translation — for example after editing the exercise — delete the corresponding row. There is no automatic invalidation.
+
+### Session
+
+Represents one student's attempt at one exercise.
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | String (cuid) | Auto-generated unique identifier |
+| `studentId` | String | Free-form student identifier (no authentication in the MVP) |
+| `exerciseId` | String | Foreign key to `Exercise` |
+| `currentPhase` | Int | `1` (spec), `2` (coding), `3` (review), or `4` (closed) |
+| `phase1Data` | JSON | All state for the specification phase, including iteration history and help requests |
+| `phase2Data` | JSON | All state for the coding phase, including Opus exchanges, revisions, and final code |
+| `phase3Data` | JSON? | All state for the review phase, including divergences and student responses |
+| `liveSummaries` | JSON | Append-only array of Opus-generated session summaries |
+| `startedAt` | DateTime | When the session was created |
+| `lastActiveAt` | DateTime | Updated on every student action |
+| `completedAt` | DateTime? | Set when the session reaches phase 4 |
+
+### SessionEvent
+
+An append-only audit log. Every significant action in a session writes a row here.
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | String (cuid) | Auto-generated unique identifier |
+| `sessionId` | String | Foreign key to `Session` |
+| `kind` | String | Event type (see table below) |
+| `payload` | JSON | Event-specific data, validated against the kind's schema |
+| `createdAt` | DateTime | When the event was recorded |
+
+**Event kinds:**
+
+| `kind` | When it fires |
+|---|---|
+| `session_started` | A new session is created |
+| `phase_transition` | The session advances to the next phase |
+| `alignment_failure` | A student's divergence response was classified as `diverged` (did not match Opus's prediction) |
+| `help_request` | The student requests instructor help |
+| `help_resolved` | An instructor marks a help request resolved |
+| `revision` | The student submits a new version of their code in phase 2 |
+| `summary_refresh` | Opus generates a new live summary for the session |
+
+## Resetting the database
+
+To start from a completely clean state, delete the database file and re-run migrations:
+
+```bash
+rm prisma/dev.db
+npx prisma migrate dev
+```
+
+This drops all data and recreates the schema. See [Loading demo data and fixtures](/self-hosting/demo-data) to repopulate with demo sessions afterwards.
+
+## Switching to Postgres
+
+In `prisma/schema.prisma`, change the datasource provider and URL:
+
+```prisma
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+```
+
+Then update `DATABASE_URL` in your `.env` file to a Postgres connection string:
+
+```bash
+DATABASE_URL="postgresql://user:password@localhost:5432/maieutic"
+```
+
+Run `npx prisma migrate dev` to apply all migrations against the new database. No application code needs to change.

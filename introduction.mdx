@@ -1,0 +1,46 @@
+---
+title: "Maieutic: a Socratic programming IDE"
+description: "Maieutic trains spec writing, critical debugging, and intent-diff awareness using Claude Opus as an interlocutor — not a code generator."
+---
+
+Maieutic takes its name from the Socratic method of drawing knowledge out through questioning rather than instruction. Where most AI coding tools accelerate the act of writing code, Maieutic bets that the skills that matter most going forward are the ones that surround the code: describing what you want precisely, reading what you actually wrote critically, and closing the gap between the two. It puts Claude Opus in the role of interlocutor — never writing the code for the student, always asking the question the student hasn't answered yet.
+
+## The three skills Maieutic trains
+
+The entire exercise flow is structured around three durable competencies. Each phase of the IDE directly develops one of them.
+
+**Writing accurate specifications.** Before the code editor unlocks, the student has to describe what their program should do — clearly enough that someone else could implement it. Opus reads the description and asks the questions an experienced implementer would obviously ask: *What if the input is empty? Should uppercase letters count?* The spec gate stays closed until the student's answers satisfy those questions. The habit formed: describe behavior first, write code second.
+
+**Critical debugging without answers.** Students write in Monaco with autocomplete off. A chat panel lets them consult Opus while coding. Opus distinguishes reference questions (syntax — answered directly) from reasoning questions (their own logic — answered with a counter-question that keeps the thinking with the student). Debugging stays theirs.
+
+**Intent-diff awareness.** When the student submits, Opus compares what they said they would do with what they actually wrote. Wherever the two don't align, it surfaces the difference as a neutral question: *"In your spec you said X. In the code I see Y. What happened?"* The skill: reading your own code against your own intent, and being able to account for where it diverged.
+
+## Two roles
+
+<CardGroup cols={2}>
+  <Card title="Students" icon="graduation-cap" href="/student/overview">
+    Work through exercises in three phases — write a spec, code a solution, explain any divergences. Autocomplete stays off. Opus guides without giving answers.
+  </Card>
+  <Card title="Instructors" icon="chalkboard-teacher" href="/instructor/overview">
+    Author exercises in minutes, watch a live per-student reasoning summary during class, and review cohort-level analytics after a session ends.
+  </Card>
+</CardGroup>
+
+## Tech stack
+
+Maieutic is a full-stack TypeScript application built on the following:
+
+| Layer | Technology |
+|---|---|
+| Framework | Next.js 16 (app router) + React 19 |
+| Language | TypeScript (strict) |
+| Styling | Tailwind v4 + shadcn/ui |
+| Code editor | Monaco (autocomplete explicitly disabled) |
+| Database ORM | Prisma 6 + SQLite |
+| AI | `@anthropic-ai/sdk` — model `claude-opus-4-7` |
+| Realtime | Server-Sent Events (plain Route Handler, no Redis) |
+| Validation | Zod at every LLM response boundary |
+
+<Note>
+  Maieutic is a Hackathon MVP. No login or account is required — the landing page asks whether you are a student or a teacher and routes you accordingly.
+</Note>

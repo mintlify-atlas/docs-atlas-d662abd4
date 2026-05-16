@@ -1,133 +1,69 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
-icon: 'star'
+title: "Maieutic: Specification-First Pedagogical IDE"
+description: "Maieutic uses Claude Opus to guide students through spec-first programming. Instructors see how each student reasons, not just whether their code runs."
 ---
 
-## Setting up
+Maieutic is a pedagogical IDE built on the premise that the most valuable programming skills today are not writing code from scratch, but specifying behavior precisely, reading code critically, and explaining the gap between intent and output. It uses Claude Opus (`claude-opus-4-7`) as a structured interlocutor — a presence that asks the right questions rather than providing the right answers.
 
-Get your documentation site up and running in minutes.
-
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
-
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+<CardGroup cols={2}>
+  <Card title="Quick start" icon="rocket" href="/quickstart">
+    Set up Maieutic locally and run your first exercise in minutes.
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="Student experience" icon="graduation-cap" href="/student/overview">
+    Understand the three-phase workflow students move through.
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="Instructor tools" icon="chalkboard-teacher" href="/instructor/overview">
+    Author exercises, monitor the live dashboard, and review session reasoning.
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+  <Card title="How Opus works" icon="brain" href="/opus/overview">
+    Learn what Opus does at each of the seven moments in a session.
   </Card>
-</Columns>
+</CardGroup>
 
-## Create beautiful pages
+## What Maieutic teaches
 
-Everything you need to create world-class documentation.
+Maieutic builds three durable skills that matter as AI-assisted coding becomes the norm:
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
+<CardGroup cols={3}>
+  <Card title="Precise specification" icon="file-pen">
+    Students describe what a program should do before writing a line of code. Opus blocks progress until the spec answers every obvious question.
   </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
+  <Card title="Critical debugging" icon="magnifying-glass-code">
+    Students write in Monaco with autocomplete off. Opus answers syntax questions directly but returns counter-questions for reasoning gaps.
   </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
+  <Card title="Intent-diff awareness" icon="code-compare">
+    After submitting code, students explain every place it diverges from their own specification — building the habit of reading code against intent.
   </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+</CardGroup>
 
-## Make your content agent ready
+## Who it's for
 
-Make your docs work for humans and AI agents alike.
+<CardGroup cols={2}>
+  <Card title="Students" icon="user-graduate" href="/student/overview">
+    Work through exercises in a structured three-phase loop: write a spec, write the code, explain where they diverged.
+  </Card>
+  <Card title="Instructors" icon="person-chalkboard" href="/instructor/overview">
+    Author exercises in seconds, watch a live per-student dashboard, and review per-session reasoning transcripts and cohort analytics.
+  </Card>
+</CardGroup>
 
-<Columns cols={2}>
-  <Card
-    title="Prompt component"
-    icon="robot"
-    href="/agent-ready/prompt"
-  >
-    Embed shareable AI prompts readers can copy or open in Cursor.
-  </Card>
-  <Card
-    title="Visibility"
-    icon="eye"
-    href="/agent-ready/visibility"
-  >
-    Show different content to humans and agents reading your docs.
-  </Card>
-  <Card
-    title="Contextual menu"
-    icon="bolt"
-    href="/agent-ready/contextual"
-  >
-    Give readers one-click access to Claude, ChatGPT, Cursor, and more.
-  </Card>
-  <Card
-    title="AI coding tools"
-    icon="wand-magic-sparkles"
-    href="/ai-tools/claude-code"
-  >
-    Set up Claude Code, Cursor, or Windsurf with Mintlify's skill.
-  </Card>
-</Columns>
+## Getting started
 
-## Need inspiration?
+<Steps>
+  <Step title="Install dependencies">
+    Clone the repo and run `npm install`. You need Node 20+ and an Anthropic API key.
+  </Step>
+  <Step title="Configure your environment">
+    Copy `.env.example` to `.env` and set `ANTHROPIC_API_KEY=sk-ant-...`.
+  </Step>
+  <Step title="Initialise the database">
+    Run `npx prisma migrate dev` to apply migrations and generate the Prisma client.
+  </Step>
+  <Step title="Start the server">
+    Run `npm run dev` and open `http://localhost:3000`. The landing page asks whether you're a student or a teacher and routes accordingly.
+  </Step>
+</Steps>
 
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+<Note>
+  The landing page requires no login. Students navigate to `/exercises`; instructors navigate to `/live`. This is an MVP — authentication is intentionally left out of scope.
+</Note>

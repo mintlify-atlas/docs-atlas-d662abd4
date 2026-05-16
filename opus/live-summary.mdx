@@ -1,0 +1,61 @@
+---
+title: "Live summaries: real-time student state"
+description: "Opus generates a one-sentence cognitive summary per active student, regenerated on every session change and streamed to the instructor dashboard via SSE."
+---
+
+Opus generates a one-sentence natural-language summary of where each student is in their thinking, regenerated whenever anything changes in the session. The summary is not a status update — it is a pedagogical insight that an instructor can act on in under five seconds per row.
+
+## What makes it useful
+
+A phase number tells an instructor nothing actionable. A live summary like *"Writing spec; has stated the happy path three times, hasn't considered empty input"* tells them exactly where to walk over and what to say. The system prompt (`LIVE_SUMMARY_SYSTEM` in `src/lib/opus/prompts/live-summary.ts`) explicitly forbids phase numbers and requires the summary to reference concrete observations from the session — what the student wrote, what Opus asked, what gaps remain, and how long they have been stuck.
+
+Summaries are stored append-only in the session's `liveSummaries` JSON field. The dashboard subscribes to Server-Sent Events; a `summary_refresh` event is emitted each time a new summary is appended.
+
+## The output schema
+
+```typescript
+// from src/lib/opus/schemas.ts
+const LiveSummaryOutput = z.object({
+  summary: z.string(),
+  flags: z.array(LiveSummaryFlag),
+});
+// LiveSummaryFlag:
+//   "help_requested" | "alignment_failure" | "proactive_revision"
+//   | "stuck_signal" | "high_performer"
+```
+
+## Flags
+
+Each summary may carry zero or more flags. The dashboard can use flags to triage which rows need attention first.
+
+| Flag | When it is set |
+|------|----------------|
+| `help_requested` | The student has raised an active help flag. |
+| `alignment_failure` | The student's most recent divergence response did not match the predicted justification. |
+| `proactive_revision` | The student invoked "change of plan" in Phase 2 to amend their spec without being prompted by Opus. |
+| `stuck_signal` | More than five minutes have passed with no state change in a phase that should have motion, or the student has made three or more failed spec iterations on the same gap. |
+| `high_performer` | The student passed the spec gate in one iteration and their code has no significant divergences. The flag means "probably doesn't need help — focus attention elsewhere." |
+
+<Note>
+  The summary prompt is phase-aware. In Phase 1 there is no chat panel and no code editor, so the summary never mentions "no chat activity" or "no code written" — those affordances don't exist yet. Each phase has different signals and the prompt constrains observations to what is actually available in that phase.
+</Note>
+
+## How summaries are generated
+
+Summaries are produced by `refreshSummaryForSession` in `src/lib/opus/summaries.ts`. The function:
+
+1. Skips sessions where the student has been silent for more than five minutes — the summary is frozen by construction once the heartbeat stops.
+2. Resolves "time in phase" from the most recent `phase_transition` event, falling back to `startedAt`.
+3. Passes the full phase state (spec iterations, code, chat history, or divergence answers, depending on the current phase) plus the last ten minutes of session events to Opus.
+4. Validates the response with Zod (`LiveSummaryOutput`) and appends the result to the session.
+
+Active sessions are also refreshed on a 10-second timer via `refreshAllActiveSessions`, with a concurrency limit of four parallel calls. Sessions where the student's heartbeat has been silent for more than five minutes are skipped to avoid wasting tokens on rows that are already dimmed on the dashboard.
+
+## Register examples
+
+The system prompt includes example summaries to anchor Opus's output register:
+
+- *"Writing spec; has stated the happy path three times, hasn't considered empty input."*
+- *"Phase 2; code compiles but spec said hashmap and they wrote nested loops — likely a revision, worth a check."*
+- *"Prediction-alignment just failed on a boundary-condition question; student answered 'I don't know.' High-value intervention target."*
+- *"Phase 1, iteration 4, same gap unresolved (empty input); 6 minutes since last submission."*

@@ -1,0 +1,67 @@
+---
+title: "Loading demo data and fixtures"
+description: "Seed the database with Ana, Beto, and Carmen's realistic sessions so you can explore the instructor dashboard without running a real class."
+---
+
+Maieutic ships with a demo script that seeds the database with realistic student sessions, exercises, and cohort data so you can explore the instructor dashboard without running a real class. The fixtures were produced by running actual Opus sessions and saving the results to JSON — they are not synthesized.
+
+## Seeding demo data
+
+```bash
+npm run reset-demo
+```
+
+<Warning>
+  `npm run reset-demo` **destroys all existing data** and replaces it with the demo fixtures. Do not run it on a database that contains real student sessions.
+</Warning>
+
+## What the script seeds
+
+`npm run reset-demo` calls `scripts/replay-fixtures.ts --wipe`, which does the following:
+
+1. **Drops all existing data** — sessions, events, and exercises are deleted before anything is inserted.
+2. **Seeds published exercises** — all exercise fixtures from `tests/fixtures/exercises/` are loaded. The fixture set includes exercises across all four units and all three student levels, including `vowels-demo`, `fibonacci-demo`, `password-demo`, and many more.
+3. **Creates demo student identities** — Ana (`ana_student`), Beto (`beto_student`), and Carmen (`carmen_student`), plus four anonymous cohort students (`cohort_student_0` through `cohort_student_3`).
+4. **Seeds sessions with realistic phase data** — each session's `phase1Data`, `phase2Data`, and `phase3Data` fields contain real Opus exchanges, spec iterations, divergences, and student responses captured from live API calls.
+5. **Seeds live summaries and session events** — the `liveSummaries` array and the `SessionEvent` audit log are populated so the dashboard has data to display.
+6. **Rebases all timestamps** — start times, completion times, and per-event timestamps are rewritten relative to the current clock so the live dashboard appears active.
+
+After seeding, the demo state looks like this:
+
+| Student | Exercise | Status |
+|---|---|---|
+| Ana | Count vowels | Completed — closed session with one case-sensitivity divergence |
+| Beto | Validate a password | Completed — closed session, explained all divergences correctly |
+| Carmen | Nth Fibonacci number | Active — stuck in phase 1, has an open help request |
+| Cohort students 0–3 | Count vowels | Completed — varied case-drift patterns for cohort analytics |
+
+## When to use it
+
+- **After initial setup** — explore the instructor dashboard, session reasoning view, and cohort analytics without needing real students.
+- **To reset to a known-good state** — if you have been testing and want to restore the demo, run the script again.
+- **Before a demo or presentation** — the rebased timestamps make the dashboard look live each time you run it.
+
+## The `capture-fixtures` script
+
+The JSON fixtures that `npm run reset-demo` replays were originally produced by `npm run capture-fixtures`. You do not need to run this script during normal setup.
+
+```bash
+npm run capture-fixtures
+```
+
+This script runs the complete Maieutic session loop — spec examination, coding phase with Opus chat, intent-diff, and post-hoc classification — for each demo student against the live Anthropic API. It then saves the results to `tests/fixtures/exercises/` and `tests/fixtures/sessions/`.
+
+Only run `capture-fixtures` when Opus prompt templates change and you need fresh fixtures that reflect the updated prompts. The script takes around ten minutes and requires a valid `ANTHROPIC_API_KEY`.
+
+<Warning>
+  `npm run capture-fixtures` makes real API calls to Anthropic and will consume a significant number of credits. Only run it when you are deliberately updating the test fixtures.
+</Warning>
+
+## Test data coverage
+
+The demo fixtures are designed so every instructor view has populated data:
+
+- **Live dashboard** — Carmen's active session shows a live summary and an open help request flag; Ana and Beto appear as recently completed.
+- **Session reasoning view** — all three named students have full phase data, including Opus exchanges and divergence responses, so the two-column reasoning view is fully populated.
+- **Cohort analytics** — the four cohort students all worked the same vowels exercise with systematic case-drift, giving the cohort narrative something concrete to analyze.
+- **Exercise library** — all three exercises are published and have aggregate session data attached.
